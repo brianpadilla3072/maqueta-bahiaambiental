@@ -5,6 +5,7 @@ node_modules/
 dist/
 build/
 .output/
+.vercel/
 
 # Environment variables
 .env
@@ -28,3 +29,6 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code
+.claude/settings.local.json
