@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import {
   Card, Text, Group, Badge, Table, Select, Button, Stack,
   ActionIcon, Tooltip, Progress, Collapse, TextInput, Checkbox,
-  NumberInput, NativeSelect,
+  NumberInput, NativeSelect, Modal,
 } from "@mantine/core";
 import {
   Calendar, Download, ChevronDown, ChevronUp, Search,
@@ -109,6 +109,8 @@ export function HRRevisionMensual() {
   const [editValue, setEditValue] = useState<string | number>("");
   // Track selected records per operator for batch approval
   const [selectedRecords, setSelectedRecords] = useState<Record<number, Set<string>>>({});
+  // Confirmation modal for revisado toggle
+  const [confirmRevisado, setConfirmRevisado] = useState<{ opId: number; fecha: string; current: boolean } | null>(null);
 
   const mesNum = parseInt(mes);
   const mesLabel = MESES.find((m) => m.value === mes)?.label ?? "";
@@ -402,10 +404,6 @@ export function HRRevisionMensual() {
               </div>
 
               <Group gap="lg" style={{ flexWrap: "wrap" }}>
-                <div style={{ textAlign: "center", minWidth: 60 }}>
-                  <Text style={{ color: C.info.color, fontSize: 16, fontWeight: 700 }}>{summary.totalHoras}h</Text>
-                  <Text style={{ color: C.textMuted, fontSize: 10 }}>Horas</Text>
-                </div>
                 <div style={{ textAlign: "center", minWidth: 50 }}>
                   <Text style={{ color: C.success.color, fontSize: 16, fontWeight: 700 }}>{summary.presentes}</Text>
                   <Text style={{ color: C.textMuted, fontSize: 10 }}>Presentes</Text>
@@ -527,15 +525,17 @@ export function HRRevisionMensual() {
                                 <ActionIcon size="xs" color="gray" variant="subtle" onClick={cancelEdit}><X size={11} /></ActionIcon>
                               </div>
                             ) : (
-                              <div
-                                style={{ display: "flex", alignItems: "center", gap: 4, cursor: isNonEditable ? "default" : "pointer" }}
-                                onClick={() => !isNonEditable && startEdit(op.id, rec.fecha, "horas", rec.horasTrabajadas)}
-                              >
-                                <span style={{ color: C.textPrimary, fontWeight: 600 }}>
-                                  {rec.horasTrabajadas > 0 ? `${rec.horasTrabajadas}h` : "—"}
-                                </span>
-                                {!isNonEditable && <Pencil size={10} color={C.textMuted} />}
-                              </div>
+                              <Tooltip label="Al aprobar, se computa como jornada completa (8h)" disabled={isNonEditable || rec.horasTrabajadas === 0}>
+                                <div
+                                  style={{ display: "flex", alignItems: "center", gap: 4, cursor: isNonEditable ? "default" : "pointer" }}
+                                  onClick={() => !isNonEditable && startEdit(op.id, rec.fecha, "horas", rec.horasTrabajadas)}
+                                >
+                                  <span style={{ color: C.textPrimary, fontWeight: 600 }}>
+                                    {rec.horasTrabajadas > 0 ? `${rec.horasTrabajadas}/8` : "—"}
+                                  </span>
+                                  {!isNonEditable && <Pencil size={10} color={C.textMuted} />}
+                                </div>
+                              </Tooltip>
                             )}
                           </Table.Td>
 
@@ -586,7 +586,7 @@ export function HRRevisionMensual() {
                                   variant="subtle"
                                   color={rec.revisado ? "green" : "yellow"}
                                   size="sm"
-                                  onClick={() => toggleRevisado(op.id, rec.fecha, rec.revisado)}
+                                  onClick={() => setConfirmRevisado({ opId: op.id, fecha: rec.fecha, current: rec.revisado })}
                                 >
                                   {rec.revisado
                                     ? <CheckCircle size={16} color={C.success.color} />
@@ -607,7 +607,7 @@ export function HRRevisionMensual() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderTop: `1px solid ${C.divider}`, flexWrap: "wrap", gap: 8 }}>
                 <Group gap="md">
                   <Text style={{ color: C.textMuted, fontSize: 12 }}>
-                    <strong style={{ color: C.textPrimary }}>{summary.totalHoras}h</strong> trabajadas ·{" "}
+                    <strong style={{ color: C.textPrimary }}>{summary.totalHoras}/{summary.presentes * 8}h</strong> trabajadas ·{" "}
                     <strong style={{ color: C.success.color }}>{summary.presentes}</strong>/{summary.diasLaborables} días
                   </Text>
                 </Group>
@@ -667,6 +667,43 @@ export function HRRevisionMensual() {
           <Text style={{ color: C.textMuted }}>No se encontraron operarios con los filtros seleccionados.</Text>
         </Card>
       )}
+
+      {/* Confirmation modal for revisado toggle */}
+      <Modal
+        opened={confirmRevisado !== null}
+        onClose={() => setConfirmRevisado(null)}
+        title={
+          <Text style={{ fontWeight: 600 }}>
+            {confirmRevisado?.current ? "Revertir aprobación" : "Confirmar aprobación"}
+          </Text>
+        }
+        centered
+        size="sm"
+      >
+        <Text size="sm" style={{ color: C.textSecondary }}>
+          {confirmRevisado?.current
+            ? `¿Estás seguro de marcar el registro del ${confirmRevisado.fecha.slice(5)} como pendiente?`
+            : `¿Confirmar la aprobación del registro del ${confirmRevisado?.fecha.slice(5)}? Las horas se computarán como jornada completa (8h).`
+          }
+        </Text>
+        <Group justify="flex-end" mt="md" gap="xs">
+          <Button variant="default" size="sm" onClick={() => setConfirmRevisado(null)}>
+            Cancelar
+          </Button>
+          <Button
+            color={confirmRevisado?.current ? "yellow" : "green"}
+            size="sm"
+            onClick={() => {
+              if (confirmRevisado) {
+                toggleRevisado(confirmRevisado.opId, confirmRevisado.fecha, confirmRevisado.current);
+              }
+              setConfirmRevisado(null);
+            }}
+          >
+            {confirmRevisado?.current ? "Revertir" : "Aprobar"}
+          </Button>
+        </Group>
+      </Modal>
     </Stack>
   );
 }

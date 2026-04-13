@@ -33,11 +33,10 @@ import {
 import { useAppColors } from "../../hooks/useAppColors";
 
 const CHART_DATA = [
-  { dia: "Lun", asistencia: 97, tardanzas: 3 },
-  { dia: "Mar", asistencia: 95, tardanzas: 5 },
-  { dia: "Mié", asistencia: 92, tardanzas: 4 },
-  { dia: "Jue", asistencia: 94, tardanzas: 2 },
-  { dia: "Vie", asistencia: 89, tardanzas: 7 },
+  { dia: "Sem 1", asistencia: 96, tardanzas: 4 },
+  { dia: "Sem 2", asistencia: 94, tardanzas: 5 },
+  { dia: "Sem 3", asistencia: 92, tardanzas: 6 },
+  { dia: "Sem 4", asistencia: 95, tardanzas: 3 },
 ];
 
 const RECORDS_WITH_OBS = [
@@ -116,10 +115,10 @@ export function HRDashboard() {
         <Card withBorder radius="lg" shadow="sm" p="lg" style={{ borderColor: C.cardBorder, background: C.cardBg }}>
           <Group justify="space-between" mb="lg">
             <Box>
-              <Text style={{ fontSize: 14, fontWeight: 600, color: C.textPrimary }}>Asistencia semanal</Text>
-              <Text style={{ fontSize: 12, color: C.textMuted }}>Semana actual · porcentaje diario</Text>
+              <Text style={{ fontSize: 14, fontWeight: 600, color: C.textPrimary }}>Asistencia mensual</Text>
+              <Text style={{ fontSize: 12, color: C.textMuted }}>Mes actual · porcentaje semanal</Text>
             </Box>
-            <Badge color="violet" variant="light" size="sm">Semana 14</Badge>
+            <Badge color="violet" variant="light" size="sm">Abril 2026</Badge>
           </Group>
           <BarChart
             h={200}
