@@ -65,9 +65,9 @@ export function HRDashboard() {
   const [activeTab, setActiveTab] = useState<string | null>("prioritarios");
 
   const kpiData = [
-    { label: "Asistencia Promedio", value: "94.2%", sub: "+2.1% vs. semana anterior", trending: "up-good", icon: CheckCircle, ...C.success, ring: 94, ringColor: "teal" },
-    { label: "Tardanzas Sistemáticas", value: "12", sub: "−3 vs. semana anterior", trending: "down-good", icon: Clock, ...C.warning, ring: 22, ringColor: "yellow" },
-    { label: "Ausencias S/Justificar", value: "7", sub: "+2 vs. semana anterior", trending: "up-bad", icon: AlertCircle, ...C.danger, ring: 14, ringColor: "orange" },
+    { label: "Asistencia Promedio", value: "94.2%", sub: "+2.1% vs. mes anterior", trending: "up-good", icon: CheckCircle, ...C.success, ring: 94, ringColor: "teal" },
+    { label: "Tardanzas Sistemáticas", value: "12", sub: "−3 vs. mes anterior", trending: "down-good", icon: Clock, ...C.warning, ring: 22, ringColor: "yellow" },
+    { label: "Ausencias S/Justificar", value: "7", sub: "+2 vs. mes anterior", trending: "up-bad", icon: AlertCircle, ...C.danger, ring: 14, ringColor: "orange" },
     { label: "Empleados Activos", value: "148", sub: "3 nuevos incorporados", trending: "neutral", icon: Users, ...C.info, ring: 75, ringColor: "blue" },
   ];
 
@@ -84,7 +84,7 @@ export function HRDashboard() {
           <Paper withBorder p="xs" radius="md" style={{ borderColor: C.border, background: C.cardBg }}>
             <Group gap="sm">
               <Calendar size={15} color={C.violet.color} />
-              <Text style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary }}>Semana 14 · Abril 2026</Text>
+              <Text style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary }}>{new Date().toLocaleDateString("es-AR", { month: "long", year: "numeric" }).replace(/^\w/, (c: string) => c.toUpperCase())}</Text>
             </Group>
           </Paper>
         </Group>
