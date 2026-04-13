@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from "react-router";
 import { ActionIcon, Avatar, Badge, Divider, Tooltip } from "@mantine/core";
 import { useMantineColorScheme } from "@mantine/core";
 import {
-  Map, Cpu, UserPlus, Shield, LogOut, ShieldCheck,
+  Map, Cpu, UserPlus, Shield, LogOut, ShieldCheck, Users,
   Sun, Moon, ChevronLeft, ChevronRight, Menu, X, Building2,
 } from "lucide-react";
 import { SidebarNavItem } from "../shared/SidebarNavItem";
@@ -20,6 +20,7 @@ const navItems = [
   { path: "/admin/dispositivos", label: "Dispositivos FaceDeep", icon: Cpu },
   { path: "/admin/enrolamiento", label: "Enrolamiento Facial",   icon: UserPlus },
   { path: "/admin/estaciones",   label: "Gestión de Estaciones", icon: Building2 },
+  { path: "/admin/usuarios",     label: "Usuarios y Roles",      icon: Users },
   { path: "/admin/auditoria",    label: "Auditoría y Config.",   icon: Shield },
 ];
 

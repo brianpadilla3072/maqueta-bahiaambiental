@@ -16,6 +16,7 @@ import { AdminEnrolamiento } from "./components/admin/AdminEnrolamiento";
 import { AdminEstaciones } from "./components/admin/AdminEstaciones";
 import { AdminEstacionesDetalle } from "./components/admin/AdminEstacionesDetalle";
 import { AdminAuditoria } from "./components/admin/AdminAuditoria";
+import { AdminUsuarios } from "./components/admin/AdminUsuarios";
 
 export const router = createBrowserRouter([
   {
@@ -57,6 +58,7 @@ export const router = createBrowserRouter([
       { path: "enrolamiento", Component: AdminEnrolamiento },
       { path: "estaciones", Component: AdminEstaciones },
       { path: "estaciones/:id", Component: AdminEstacionesDetalle },
+      { path: "usuarios", Component: AdminUsuarios },
       { path: "auditoria", Component: AdminAuditoria },
     ],
   },
