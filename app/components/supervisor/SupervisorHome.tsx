@@ -17,9 +17,11 @@ import {
   ActionIcon,
   Tooltip,
   Badge,
+  Textarea,
+  Select,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { Play, Users, MapPin, Clock, AlertCircle, UserPlus, Search, Plus, Camera, CheckCircle2 } from "lucide-react";
+import { Play, Users, MapPin, Clock, AlertCircle, AlertTriangle, UserPlus, Search, Plus, Camera, CheckCircle2, Edit3 } from "lucide-react";
 import { useAppColors } from "../../hooks/useAppColors";
 
 const ALL_WORKERS = [
@@ -48,6 +50,13 @@ export function SupervisorHome() {
   const [capturing,  setCapturing]  = useState<number | null>(null);
   const [jornadaActiva, setJornadaActiva] = useState(false);
   const [confirmCapture, setConfirmCapture] = useState<typeof ALL_WORKERS[0] | null>(null);
+  const [licenciaObs, setLicenciaObs] = useState("");
+  // Face fail modal
+  const [faceFailWorker, setFaceFailWorker] = useState<typeof ALL_WORKERS[0] | null>(null);
+  const [manualObs, setManualObs] = useState("Falla de reconocimiento facial");
+  const [manualReason, setManualReason] = useState<string | null>("Falla de cara");
+  // Track observations per worker
+  const [observations, setObservations] = useState<Record<number, string>>({});
 
   /* ── Acciones ──────────────────────────────────────────────────── */
   const handleOpenJornada = () => {
@@ -78,19 +87,50 @@ export function SupervisorHome() {
 
   const confirmBiometricCapture = () => {
     if (!confirmCapture) return;
-    const id = confirmCapture.id;
+    const worker = confirmCapture;
+    const id = worker.id;
+    const obs = worker.licencia ? licenciaObs : "";
+
     setConfirmCapture(null);
+    setLicenciaObs("");
     setCapturing(id);
+
+    // Simulate: ~30% chance face detection fails
+    const faceFails = Math.random() < 0.3;
+
     setTimeout(() => {
-      setRegistered((prev) => new Set([...prev, id]));
       setCapturing(null);
-      const worker = workers.find((w) => w.id === id);
-      notifications.show({
-        title: "Registro biométrico OK",
-        message: `${worker?.name} verificado correctamente.`,
-        color: "teal",
-      });
+      if (faceFails) {
+        // Face detection failed - open manual registration modal
+        setFaceFailWorker(worker);
+        setManualObs("Falla de reconocimiento facial");
+        setManualReason("Falla de cara");
+      } else {
+        // Success
+        setRegistered((prev) => new Set([...prev, id]));
+        if (obs) setObservations((prev) => ({ ...prev, [id]: obs }));
+        notifications.show({
+          title: "Registro biométrico OK",
+          message: `${worker.name} verificado correctamente.${obs ? ` Obs: ${obs}` : ""}`,
+          color: "teal",
+        });
+      }
     }, 1400);
+  };
+
+  const handleManualRegister = () => {
+    if (!faceFailWorker || !manualReason) return;
+    const id = faceFailWorker.id;
+    const fullObs = `${manualReason}: ${manualObs}`;
+    setRegistered((prev) => new Set([...prev, id]));
+    setObservations((prev) => ({ ...prev, [id]: fullObs }));
+    notifications.show({
+      title: "Registro manual completado",
+      message: `${faceFailWorker.name} registrado con observación: ${manualReason}`,
+      color: "yellow",
+    });
+    setFaceFailWorker(null);
+    setManualObs("");
   };
 
   /* trabajadores que aún NO están en la cuadrilla y coinciden con búsqueda */
@@ -195,26 +235,28 @@ export function SupervisorHome() {
               {workers.map((worker) => {
                 const isRegistered = registered.has(worker.id);
                 const isCapturing  = capturing === worker.id;
+                const hasObs = observations[worker.id];
+                const isManual = hasObs?.startsWith("Falla de cara");
                 return (
                   <Box
                     key={worker.id}
                     style={{
-                      border:       `1px solid ${isRegistered ? (C.dark ? "rgba(20,184,166,0.45)" : "#99f6e4") : C.border}`,
+                      border:       `1px solid ${isRegistered ? (isManual ? (C.dark ? "rgba(217,119,6,0.45)" : "#fde68a") : (C.dark ? "rgba(20,184,166,0.45)" : "#99f6e4")) : C.border}`,
                       borderRadius: 10,
                       padding:      "12px 14px",
-                      background:   isRegistered ? (C.dark ? "rgba(20,184,166,0.08)" : "#f0fdf9") : C.cardHeaderBg,
+                      background:   isRegistered ? (isManual ? (C.dark ? "rgba(217,119,6,0.08)" : "#fffbeb") : (C.dark ? "rgba(20,184,166,0.08)" : "#f0fdf9")) : C.cardHeaderBg,
                       transition:   "border-color 0.2s, background 0.2s",
                     }}
                   >
                     <Group justify="space-between" wrap="nowrap">
                       <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
                         <Avatar
-                          color={isRegistered ? "teal" : "blue"}
+                          color={isRegistered ? (isManual ? "yellow" : "teal") : "blue"}
                           radius="xl"
                           size="md"
                           style={{
                             background: isRegistered
-                              ? (C.dark ? "#134e4a" : "#ccfbf1")
+                              ? (isManual ? (C.dark ? "#78350f" : "#fef3c7") : (C.dark ? "#134e4a" : "#ccfbf1"))
                               : (C.dark ? "#1e3a5f" : "#dbeafe"),
                             flexShrink: 0,
                           }}
@@ -231,6 +273,13 @@ export function SupervisorHome() {
                             </Text>
                             {worker.licencia && (
                               <Badge size="xs" color="yellow" variant="light">{worker.licencia}</Badge>
+                            )}
+                            {hasObs && (
+                              <Tooltip label={hasObs} multiline w={220}>
+                                <Badge size="xs" color={isManual ? "orange" : "blue"} variant="light" leftSection={<Edit3 size={8} />}>
+                                  {isManual ? "Manual" : "Obs."}
+                                </Badge>
+                              </Tooltip>
                             )}
                           </Group>
                         </Box>
@@ -249,7 +298,7 @@ export function SupervisorHome() {
                       >
                         <ActionIcon
                           variant={isRegistered ? "light" : jornadaActiva ? "filled" : "light"}
-                          color={isRegistered ? "teal" : jornadaActiva ? "blue" : "gray"}
+                          color={isRegistered ? (isManual ? "yellow" : "teal") : jornadaActiva ? "blue" : "gray"}
                           size="lg"
                           radius="xl"
                           onClick={() => jornadaActiva && !isRegistered && handleCapture(worker.id)}
@@ -262,7 +311,7 @@ export function SupervisorHome() {
                           }}
                         >
                           {isRegistered
-                            ? <CheckCircle2 size={17} />
+                            ? (isManual ? <AlertTriangle size={17} /> : <CheckCircle2 size={17} />)
                             : <Camera size={17} />}
                         </ActionIcon>
                       </Tooltip>
@@ -394,13 +443,94 @@ export function SupervisorHome() {
                 )}
               </Box>
             </Group>
-            <Alert color="blue" variant="light" radius="md" style={{ fontSize: 13 }}>
-              El operario será verificado mediante reconocimiento facial. Asegúrese de que esté frente al dispositivo.
-            </Alert>
+            {confirmCapture.licencia ? (
+              <Alert color="yellow" variant="light" radius="md" icon={<AlertTriangle size={14} />} style={{ fontSize: 13 }}>
+                Este operario tiene licencia por <strong>{confirmCapture.licencia}</strong>. Se registrará con observación.
+              </Alert>
+            ) : (
+              <Alert color="blue" variant="light" radius="md" style={{ fontSize: 13 }}>
+                El operario será verificado mediante reconocimiento facial. Asegúrese de que esté frente al dispositivo.
+              </Alert>
+            )}
+            {confirmCapture.licencia && (
+              <Textarea
+                label="Observación"
+                placeholder="Detalle el motivo del registro con licencia activa..."
+                value={licenciaObs}
+                onChange={(e) => setLicenciaObs(e.currentTarget.value)}
+                minRows={2}
+                size="sm"
+                required
+              />
+            )}
             <Group justify="flex-end" gap="xs">
-              <Button variant="default" size="sm" onClick={() => setConfirmCapture(null)}>Cancelar</Button>
-              <Button color="blue" size="sm" leftSection={<Camera size={14} />} onClick={confirmBiometricCapture}>
-                Iniciar captura
+              <Button variant="default" size="sm" onClick={() => { setConfirmCapture(null); setLicenciaObs(""); }}>Cancelar</Button>
+              <Button
+                color={confirmCapture.licencia ? "yellow" : "blue"}
+                size="sm"
+                leftSection={<Camera size={14} />}
+                onClick={confirmBiometricCapture}
+                disabled={!!confirmCapture.licencia && !licenciaObs.trim()}
+              >
+                {confirmCapture.licencia ? "Registrar con observación" : "Iniciar captura"}
+              </Button>
+            </Group>
+          </Stack>
+        )}
+      </Modal>
+
+      {/* ── Modal falla de reconocimiento facial ──────────────────── */}
+      <Modal
+        opened={faceFailWorker !== null}
+        onClose={() => setFaceFailWorker(null)}
+        title={
+          <Group gap="sm">
+            <AlertTriangle size={18} color="#d97706" />
+            <Text style={{ fontWeight: 700, fontSize: 15, color: C.textPrimary }}>Falla de reconocimiento</Text>
+          </Group>
+        }
+        size="md"
+        centered
+        radius="lg"
+        styles={{
+          content: { background: C.cardBg, border: `1px solid ${C.cardBorder}` },
+          header:  { background: C.cardBg, borderBottom: `1px solid ${C.divider}` },
+        }}
+      >
+        {faceFailWorker && (
+          <Stack gap="md" p="xs">
+            <Group gap="md">
+              <Avatar color="orange" radius="xl" size="lg" style={{ background: C.dark ? "#78350f" : "#fef3c7" }}>
+                {faceFailWorker.name.split(" ").map((n) => n[0]).join("")}
+              </Avatar>
+              <Box>
+                <Text style={{ fontSize: 15, fontWeight: 600, color: C.textPrimary }}>{faceFailWorker.name}</Text>
+                <Text style={{ fontSize: 12, color: C.textMuted }}>{faceFailWorker.legajo} · {faceFailWorker.categoria}</Text>
+              </Box>
+            </Group>
+            <Alert color="orange" variant="light" radius="md" icon={<AlertTriangle size={14} />} style={{ fontSize: 13 }}>
+              No se pudo verificar el rostro del operario. Puede registrarlo manualmente con una observación obligatoria.
+            </Alert>
+            <Select
+              label="Motivo"
+              data={["Falla de cara", "Dispositivo sin respuesta", "Rostro no reconocido", "Error de red"]}
+              value={manualReason}
+              onChange={setManualReason}
+              size="sm"
+              required
+            />
+            <Textarea
+              label="Observación adicional"
+              placeholder="Detalle la situación..."
+              value={manualObs}
+              onChange={(e) => setManualObs(e.currentTarget.value)}
+              minRows={2}
+              size="sm"
+            />
+            <Group justify="flex-end" gap="xs">
+              <Button variant="default" size="sm" onClick={() => setFaceFailWorker(null)}>Cancelar</Button>
+              <Button color="yellow" size="sm" leftSection={<Edit3 size={14} />} onClick={handleManualRegister} disabled={!manualReason}>
+                Registrar manualmente
               </Button>
             </Group>
           </Stack>
