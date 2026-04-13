@@ -16,24 +16,25 @@ import {
   ScrollArea,
   ActionIcon,
   Tooltip,
+  Badge,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { Play, Users, MapPin, Clock, AlertCircle, UserPlus, Search, Plus, Camera, CheckCircle2 } from "lucide-react";
 import { useAppColors } from "../../hooks/useAppColors";
 
 const ALL_WORKERS = [
-  { id: 1,  name: "Carlos Mendez",   legajo: "OP-1042", categoria: "Peón" },
-  { id: 2,  name: "Ana Rodríguez",   legajo: "OP-2318", categoria: "Chofer" },
-  { id: 3,  name: "Luis García",     legajo: "OP-0987", categoria: "Peón" },
-  { id: 4,  name: "María López",     legajo: "OP-1563", categoria: "Oficial" },
-  { id: 5,  name: "Roberto Silva",   legajo: "OP-2041", categoria: "Peón" },
-  { id: 6,  name: "Sandra Flores",   legajo: "OP-3102", categoria: "Chofer" },
-  { id: 7,  name: "Diego Herrera",   legajo: "OP-4201", categoria: "Oficial" },
-  { id: 8,  name: "Lucía Martínez",  legajo: "OP-1890", categoria: "Peón" },
-  { id: 9,  name: "Fabián Torres",   legajo: "OP-2750", categoria: "Chofer" },
-  { id: 10, name: "Valeria Gómez",   legajo: "OP-3381", categoria: "Peón" },
-  { id: 11, name: "Martín Acosta",   legajo: "OP-0612", categoria: "Oficial" },
-  { id: 12, name: "Cecilia Ramos",   legajo: "OP-4490", categoria: "Peón" },
+  { id: 1,  name: "Carlos Mendez",   legajo: "OP-1042", categoria: "Peón",    licencia: null as string | null },
+  { id: 2,  name: "Ana Rodríguez",   legajo: "OP-2318", categoria: "Chofer",  licencia: null as string | null },
+  { id: 3,  name: "Luis García",     legajo: "OP-0987", categoria: "Peón",    licencia: "Enfermedad" },
+  { id: 4,  name: "María López",     legajo: "OP-1563", categoria: "Oficial", licencia: null as string | null },
+  { id: 5,  name: "Roberto Silva",   legajo: "OP-2041", categoria: "Peón",    licencia: null as string | null },
+  { id: 6,  name: "Sandra Flores",   legajo: "OP-3102", categoria: "Chofer",  licencia: "Vacaciones" },
+  { id: 7,  name: "Diego Herrera",   legajo: "OP-4201", categoria: "Oficial", licencia: null as string | null },
+  { id: 8,  name: "Lucía Martínez",  legajo: "OP-1890", categoria: "Peón",    licencia: null as string | null },
+  { id: 9,  name: "Fabián Torres",   legajo: "OP-2750", categoria: "Chofer",  licencia: null as string | null },
+  { id: 10, name: "Valeria Gómez",   legajo: "OP-3381", categoria: "Peón",    licencia: "RT" },
+  { id: 11, name: "Martín Acosta",   legajo: "OP-0612", categoria: "Oficial", licencia: null as string | null },
+  { id: 12, name: "Cecilia Ramos",   legajo: "OP-4490", categoria: "Peón",    licencia: null as string | null },
 ];
 
 export function SupervisorHome() {
@@ -46,6 +47,7 @@ export function SupervisorHome() {
   const [registered, setRegistered] = useState<Set<number>>(new Set());
   const [capturing,  setCapturing]  = useState<number | null>(null);
   const [jornadaActiva, setJornadaActiva] = useState(false);
+  const [confirmCapture, setConfirmCapture] = useState<typeof ALL_WORKERS[0] | null>(null);
 
   /* ── Acciones ──────────────────────────────────────────────────── */
   const handleOpenJornada = () => {
@@ -70,6 +72,14 @@ export function SupervisorHome() {
 
   const handleCapture = (id: number) => {
     if (capturing !== null || !jornadaActiva) return;
+    const worker = workers.find((w) => w.id === id);
+    if (worker) setConfirmCapture(worker);
+  };
+
+  const confirmBiometricCapture = () => {
+    if (!confirmCapture) return;
+    const id = confirmCapture.id;
+    setConfirmCapture(null);
     setCapturing(id);
     setTimeout(() => {
       setRegistered((prev) => new Set([...prev, id]));
@@ -215,9 +225,14 @@ export function SupervisorHome() {
                           <Text style={{ fontSize: 13.5, fontWeight: 600, color: C.textPrimary, lineHeight: 1.3 }}>
                             {worker.name}
                           </Text>
-                          <Text style={{ fontSize: 12, color: C.textMuted }}>
-                            {worker.legajo} · {worker.categoria}
-                          </Text>
+                          <Group gap={4} align="center">
+                            <Text style={{ fontSize: 12, color: C.textMuted }}>
+                              {worker.legajo} · {worker.categoria}
+                            </Text>
+                            {worker.licencia && (
+                              <Badge size="xs" color="yellow" variant="light">{worker.licencia}</Badge>
+                            )}
+                          </Group>
                         </Box>
                       </Group>
 
@@ -345,6 +360,51 @@ export function SupervisorHome() {
             </Stack>
           )}
         </ScrollArea>
+      </Modal>
+
+      {/* ── Modal confirmación biométrica ──────────────────────────── */}
+      <Modal
+        opened={confirmCapture !== null}
+        onClose={() => setConfirmCapture(null)}
+        title={
+          <Group gap="sm">
+            <Camera size={18} color="#3b82f6" />
+            <Text style={{ fontWeight: 700, fontSize: 15, color: C.textPrimary }}>Confirmar registro</Text>
+          </Group>
+        }
+        size="sm"
+        centered
+        radius="lg"
+        styles={{
+          content: { background: C.cardBg, border: `1px solid ${C.cardBorder}` },
+          header:  { background: C.cardBg, borderBottom: `1px solid ${C.divider}` },
+        }}
+      >
+        {confirmCapture && (
+          <Stack gap="md" p="xs">
+            <Group gap="md">
+              <Avatar color="blue" radius="xl" size="lg" style={{ background: C.dark ? "#1e3a5f" : "#dbeafe" }}>
+                {confirmCapture.name.split(" ").map((n) => n[0]).join("")}
+              </Avatar>
+              <Box>
+                <Text style={{ fontSize: 15, fontWeight: 600, color: C.textPrimary }}>{confirmCapture.name}</Text>
+                <Text style={{ fontSize: 12, color: C.textMuted }}>{confirmCapture.legajo} · {confirmCapture.categoria}</Text>
+                {confirmCapture.licencia && (
+                  <Badge size="sm" color="yellow" variant="light" mt={4}>{confirmCapture.licencia}</Badge>
+                )}
+              </Box>
+            </Group>
+            <Alert color="blue" variant="light" radius="md" style={{ fontSize: 13 }}>
+              El operario será verificado mediante reconocimiento facial. Asegúrese de que esté frente al dispositivo.
+            </Alert>
+            <Group justify="flex-end" gap="xs">
+              <Button variant="default" size="sm" onClick={() => setConfirmCapture(null)}>Cancelar</Button>
+              <Button color="blue" size="sm" leftSection={<Camera size={14} />} onClick={confirmBiometricCapture}>
+                Iniciar captura
+              </Button>
+            </Group>
+          </Stack>
+        )}
       </Modal>
     </Box>
   );
