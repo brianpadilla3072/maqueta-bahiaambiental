@@ -64,7 +64,7 @@ export function AdminMapa() {
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [opened, { open, close }] = useDisclosure(false);
   const [editMode, setEditMode] = useState(false);
-  const [form, setForm] = useState({ name: "", address: "", zona: "", devices: 1 });
+  const [form, setForm] = useState({ name: "", address: "", zona: "", devices: 1, faceDeep: "", supervisor: "" });
 
   const statusConfig = {
     online:  { color: "blue"   as const, label: "Operativa",    Icon: Wifi,        dot: C.info.dot, bg: C.info.bg, border: C.info.border },
@@ -74,14 +74,14 @@ export function AdminMapa() {
 
   const handleSelectStation = (s: Station) => {
     setSelectedStation(s);
-    setForm({ name: s.name, address: s.address, zona: s.zona, devices: s.devices });
+    setForm({ name: s.name, address: s.address, zona: s.zona, devices: s.devices, faceDeep: "FD-" + String(s.id).padStart(3, "0"), supervisor: "" });
     setEditMode(true);
     open();
   };
 
   const handleNewStation = () => {
     setSelectedStation(null);
-    setForm({ name: "", address: "", zona: "", devices: 1 });
+    setForm({ name: "", address: "", zona: "", devices: 1, faceDeep: "", supervisor: "" });
     setEditMode(false);
     open();
   };
@@ -237,6 +237,37 @@ export function AdminMapa() {
             value={form.devices.toString()}
             onChange={(v) => setForm({ ...form, devices: parseInt(v || "1") })}
             styles={inputStyles}
+          />
+
+          <Select
+            label="Face Deep"
+            placeholder="Seleccione un dispositivo"
+            data={[
+              { value: "FD-001", label: "FD-001 — ZKTeco FaceDepot 7B" },
+              { value: "FD-002", label: "FD-002 — ZKTeco SpeedFace V5L" },
+              { value: "FD-003", label: "FD-003 — ZKTeco ProFace X" },
+              { value: "FD-004", label: "FD-004 — ZKTeco FaceDepot 7B" },
+              { value: "FD-005", label: "FD-005 — ZKTeco SpeedFace V5L" },
+            ]}
+            value={form.faceDeep}
+            onChange={(v) => setForm({ ...form, faceDeep: v || "" })}
+            styles={inputStyles}
+            searchable
+          />
+
+          <Select
+            label="Supervisor Encargado"
+            placeholder="Seleccione un supervisor"
+            data={[
+              { value: "sup-1", label: "Juan Pérez — Supervisor" },
+              { value: "sup-2", label: "Martín Gómez — Supervisor" },
+              { value: "sup-3", label: "Laura Fernández — Supervisora" },
+              { value: "sup-4", label: "Diego Ramírez — Supervisor" },
+            ]}
+            value={form.supervisor}
+            onChange={(v) => setForm({ ...form, supervisor: v || "" })}
+            styles={inputStyles}
+            searchable
           />
 
           <Divider my="sm" color={C.sidebarBorder} />
