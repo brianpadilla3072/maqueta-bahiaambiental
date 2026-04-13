@@ -79,7 +79,7 @@ export function SupervisorLayout() {
     const estacionNombre = estacionesDisponibles.find(e => e.value === estacionSeleccionada)?.label;
     notifications.show({
       title: "Solicitud enviada",
-      message: `El administrador revisará tu solicitud para acceder a ${estacionNombre}.`,
+      message: `Gerencia revisará tu solicitud para acceder a ${estacionNombre}.`,
       color: "blue",
     });
     setMensajeSolicitud("");
@@ -375,7 +375,7 @@ export function SupervisorLayout() {
       >
         <Stack gap="md">
           <Text style={{ fontSize: 13, color: C.textMuted }}>
-            Envía un mensaje al administrador para solicitar acceso a una nueva estación. La solicitud será revisada y aprobada.
+            Envía un mensaje a Gerencia para solicitar acceso a una nueva estación. La solicitud será revisada y aprobada.
           </Text>
           <Select
             label="Estación"

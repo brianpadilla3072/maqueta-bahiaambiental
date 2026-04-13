@@ -34,7 +34,7 @@ import { useAppColors } from "../hooks/useAppColors";
 const USERS = [
   { username: "supervisor", password: "1234", role: "supervisor", label: "Supervisor" },
   { username: "rrhh", password: "1234", role: "rrhh", label: "Recursos Humanos" },
-  { username: "admin", password: "1234", role: "admin", label: "Administrador" },
+  { username: "admin", password: "1234", role: "admin", label: "Gerencia" },
 ];
 
 const FEATURES = [
