@@ -19,7 +19,7 @@ const navItems = [
   { path: "/rrhh/dashboard",       label: "Dashboard",      icon: LayoutDashboard },
   { path: "/rrhh/justificaciones", label: "Justificaciones", icon: FileText },
   { path: "/rrhh/legajo",          label: "Legajo",         icon: Users },
-  { path: "/rrhh/revision",        label: "Revisión Mensual", icon: ClipboardCheck },
+  { path: "/rrhh/revision",        label: "Gestión de Jornada", icon: ClipboardCheck },
 ];
 
 export function HRLayout() {

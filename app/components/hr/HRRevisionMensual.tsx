@@ -7,7 +7,7 @@ import {
 import {
   Calendar, Download, ChevronDown, ChevronUp, Search,
   Clock, AlertTriangle, CheckCircle, Eye, Filter,
-  Pencil, Check, X,
+  Pencil, Check, X, Lock,
 } from "lucide-react";
 import { useAppColors } from "../../hooks/useAppColors";
 
@@ -108,6 +108,8 @@ export function HRRevisionMensual() {
   const [editingCell, setEditingCell] = useState<{ opId: number; fecha: string; field: "horas" | "estado" } | null>(null);
   const [editValue, setEditValue] = useState<string | number>("");
   const [confirmRevisado, setConfirmRevisado] = useState<{ opId: number; fecha: string; current: boolean } | null>(null);
+  const [mesCerrado, setMesCerrado] = useState(false);
+  const [showCerrarMes, setShowCerrarMes] = useState(false);
 
   const mesNum = parseInt(mes);
   const mesLabel = MESES.find((m) => m.value === mes)?.label ?? "";
@@ -253,10 +255,20 @@ export function HRRevisionMensual() {
             color="blue"
             variant="filled"
             size="sm"
-            disabled={selectedForExport.size === 0}
+            disabled={selectedForExport.size === 0 || mesCerrado}
             onClick={handleExportDAZ}
           >
             Guardar para DAZ ({selectedForExport.size})
+          </Button>
+          <Button
+            leftSection={<Lock size={15} />}
+            color={mesCerrado ? "gray" : "red"}
+            variant={mesCerrado ? "light" : "filled"}
+            size="sm"
+            disabled={mesCerrado}
+            onClick={() => setShowCerrarMes(true)}
+          >
+            {mesCerrado ? "Mes cerrado" : "Cerrar Mes"}
           </Button>
         </Group>
       </div>
@@ -268,7 +280,7 @@ export function HRRevisionMensual() {
             label="Mes"
             data={MESES}
             value={mes}
-            onChange={(v) => { if (v) { setMes(v); regenerateData(parseInt(v), anio); } }}
+            onChange={(v) => { if (v) { setMes(v); regenerateData(parseInt(v), anio); setMesCerrado(false); } }}
             leftSection={<Calendar size={14} />}
             size="sm"
             style={{ minWidth: 140 }}
@@ -623,6 +635,79 @@ export function HRRevisionMensual() {
             {confirmRevisado?.current ? "Revertir" : "Aprobar"}
           </Button>
         </Group>
+      </Modal>
+
+      {/* Modal cerrar mes */}
+      <Modal
+        opened={showCerrarMes}
+        onClose={() => setShowCerrarMes(false)}
+        title={
+          <Group gap="sm">
+            <Lock size={18} color="#ef4444" />
+            <Text style={{ fontWeight: 700, fontSize: 15, color: C.textPrimary }}>Cerrar mes</Text>
+          </Group>
+        }
+        centered
+        size="md"
+      >
+        {(() => {
+          const allRecords = filtered.flatMap((op) => dataByOp[op.id] ?? []);
+          const totalHoras = allRecords.reduce((s, r) => s + r.horasTrabajadas, 0);
+          const pendientes = allRecords.filter((r) => !r.revisado && r.estado !== "descanso" && r.estado !== "feriado").length;
+          const presentes = allRecords.filter((r) => r.estado === "presente").length;
+          const laborables = allRecords.filter((r) => r.estado !== "descanso" && r.estado !== "feriado").length;
+          const pct = laborables > 0 ? Math.round((presentes / laborables) * 100) : 0;
+
+          return (
+            <Stack gap="md">
+              <Text size="sm" style={{ color: C.textSecondary }}>
+                Vas a cerrar <strong>{mesLabel} {anio}</strong>. Una vez cerrado no se podrán editar los registros de este mes.
+              </Text>
+
+              <Card padding="sm" radius="md" style={{ background: C.mainBg, border: `1px solid ${C.cardBorder}` }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div>
+                    <Text style={{ color: C.textMuted, fontSize: 11, textTransform: "uppercase" }}>Total horas</Text>
+                    <Text style={{ color: C.info.color, fontSize: 18, fontWeight: 700 }}>{Math.round(totalHoras).toLocaleString()}h</Text>
+                  </div>
+                  <div>
+                    <Text style={{ color: C.textMuted, fontSize: 11, textTransform: "uppercase" }}>Asistencia</Text>
+                    <Text style={{ color: C.success.color, fontSize: 18, fontWeight: 700 }}>{pct}%</Text>
+                  </div>
+                  <div>
+                    <Text style={{ color: C.textMuted, fontSize: 11, textTransform: "uppercase" }}>Operarios</Text>
+                    <Text style={{ color: C.textPrimary, fontSize: 18, fontWeight: 700 }}>{filtered.length}</Text>
+                  </div>
+                  <div>
+                    <Text style={{ color: C.textMuted, fontSize: 11, textTransform: "uppercase" }}>Pendientes</Text>
+                    <Text style={{ color: pendientes > 0 ? C.warning.color : C.success.color, fontSize: 18, fontWeight: 700 }}>{pendientes}</Text>
+                  </div>
+                </div>
+              </Card>
+
+              {pendientes > 0 && (
+                <Badge color="yellow" variant="light" size="lg" leftSection={<AlertTriangle size={14} />} style={{ alignSelf: "flex-start" }}>
+                  Hay {pendientes} registros sin revisar
+                </Badge>
+              )}
+
+              <Group justify="flex-end" gap="xs">
+                <Button variant="default" size="sm" onClick={() => setShowCerrarMes(false)}>Cancelar</Button>
+                <Button
+                  color="red"
+                  size="sm"
+                  leftSection={<Lock size={14} />}
+                  onClick={() => {
+                    setMesCerrado(true);
+                    setShowCerrarMes(false);
+                  }}
+                >
+                  Confirmar cierre
+                </Button>
+              </Group>
+            </Stack>
+          );
+        })()}
       </Modal>
     </Stack>
   );
