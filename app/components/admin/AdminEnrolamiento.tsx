@@ -12,11 +12,13 @@ import {
   ThemeIcon,
   Divider,
   Loader,
+  Avatar,
+  FileButton,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   Search, User, Camera, CheckCircle, MinusCircle,
-  AlertTriangle, Save, Scan, UserCheck,
+  AlertTriangle, Save, Scan, UserCheck, Upload,
   ChevronRight, ChevronLeft,
 } from "lucide-react";
 import { useAppColors } from "../../hooks/useAppColors";
@@ -41,6 +43,7 @@ export function AdminEnrolamiento() {
   const [dasLoading,   setDasLoading]   = useState(false);
   const [faceStatus,   setFaceStatus]   = useState<"idle" | "scanning" | "captured">("idle");
   const [profileForm,  setProfileForm]  = useState({ nombre: "", categoria: "", funcion: "", estacion: "" });
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [saving,       setSaving]       = useState(false);
 
   const inputStyles = {
@@ -256,6 +259,37 @@ export function AdminEnrolamiento() {
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: 24 }}>
+                {/* Photo upload */}
+                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                  <Avatar
+                    src={profilePhoto}
+                    size={80}
+                    radius="md"
+                    style={{ border: `2px dashed ${C.cardBorder}` }}
+                  >
+                    <User size={32} />
+                  </Avatar>
+                  <div>
+                    <Text style={{ fontSize: 13, fontWeight: 600, color: C.textPrimary, marginBottom: 4 }}>Foto del operario</Text>
+                    <Text style={{ fontSize: 11, color: C.textMuted, marginBottom: 8 }}>JPG o PNG, max 2MB</Text>
+                    <FileButton
+                      onChange={(file) => {
+                        if (file) {
+                          const url = URL.createObjectURL(file);
+                          setProfilePhoto(url);
+                        }
+                      }}
+                      accept="image/png,image/jpeg"
+                    >
+                      {(props) => (
+                        <Button {...props} size="xs" variant="light" color="blue" leftSection={<Upload size={12} />}>
+                          Subir foto
+                        </Button>
+                      )}
+                    </FileButton>
+                  </div>
+                </div>
+
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
                   <TextInput label="Nombre completo" value={profileForm.nombre} onChange={(e) => setProfileForm({ ...profileForm, nombre: e.currentTarget.value })} required styles={inputStyles} />
                   <Select label="Categoría" data={["Peón", "Chofer", "Oficial", "Encargado", "Supervisor"]} value={profileForm.categoria} onChange={(v) => setProfileForm({ ...profileForm, categoria: v ?? "" })} required styles={inputStyles} />
