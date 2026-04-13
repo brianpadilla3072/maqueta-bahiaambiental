@@ -474,13 +474,13 @@ export function HRRevisionMensual() {
                                   <ActionIcon size="xs" color="gray" variant="subtle" onClick={cancelEdit}><X size={11} /></ActionIcon>
                                 </div>
                               ) : (
-                                <Tooltip label="Al aprobar, se computa como jornada completa (8h)" disabled={isNonEditable || rec.horasTrabajadas === 0}>
+                                <Tooltip label="Horas trabajadas en la jornada" disabled={isNonEditable || rec.horasTrabajadas === 0}>
                                   <div
                                     style={{ display: "flex", alignItems: "center", gap: 4, cursor: isNonEditable ? "default" : "pointer" }}
                                     onClick={() => !isNonEditable && startEdit(op.id, fecha, "horas", rec.horasTrabajadas)}
                                   >
                                     <span style={{ color: C.textPrimary, fontWeight: 600 }}>
-                                      {rec.horasTrabajadas > 0 ? `${rec.horasTrabajadas}/8` : "—"}
+                                      {rec.horasTrabajadas > 0 ? `${rec.horasTrabajadas}h` : "—"}
                                     </span>
                                     {!isNonEditable && <Pencil size={10} color={C.textMuted} />}
                                   </div>
@@ -555,7 +555,7 @@ export function HRRevisionMensual() {
                 {/* Footer */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderTop: `1px solid ${C.divider}`, flexWrap: "wrap", gap: 8 }}>
                   <Text style={{ color: C.textMuted, fontSize: 12 }}>
-                    <strong style={{ color: C.success.color }}>{daySummary.presentes}</strong>/{filtered.length} presentes · <strong style={{ color: C.textPrimary }}>{daySummary.totalHoras}/{daySummary.presentes * 8}h</strong>
+                    <strong style={{ color: C.success.color }}>{daySummary.presentes}</strong>/{filtered.length} presentes · <strong style={{ color: C.textPrimary }}>{daySummary.totalHoras}h</strong>
                   </Text>
                   <Group gap="xs">
                     {daySummary.pendientes > 0 && (
@@ -603,7 +603,7 @@ export function HRRevisionMensual() {
         <Text size="sm" style={{ color: C.textSecondary }}>
           {confirmRevisado?.current
             ? `¿Estás seguro de marcar el registro del ${confirmRevisado.fecha.slice(5)} como pendiente?`
-            : `¿Confirmar la aprobación del registro del ${confirmRevisado?.fecha.slice(5)}? Las horas se computarán como jornada completa (8h).`
+            : `¿Confirmar la aprobación del registro del ${confirmRevisado?.fecha.slice(5)}?`
           }
         </Text>
         <Group justify="flex-end" mt="md" gap="xs">
