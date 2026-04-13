@@ -6,7 +6,7 @@ import {
 } from "@mantine/core";
 import {
   Calendar, Download, ChevronDown, ChevronUp, Search,
-  Clock, AlertTriangle, CheckCircle, Eye, FileText, Filter,
+  Clock, AlertTriangle, CheckCircle, Eye, Filter,
   Pencil, Check, X,
 } from "lucide-react";
 import { useAppColors } from "../../hooks/useAppColors";
@@ -96,8 +96,8 @@ export function HRRevisionMensual() {
   const [anio] = useState(2026);
   const [estacion, setEstacion] = useState<string | null>("Todas");
   const [search, setSearch] = useState("");
-  const [expandedOp, setExpandedOp] = useState<number | null>(null);
-  const [selectedForExport, setSelectedForExport] = useState<Set<number>>(new Set());
+  const [expandedDay, setExpandedDay] = useState<string | null>(null);
+  const [selectedForExport, setSelectedForExport] = useState<Set<string>>(new Set());
   const [dataByOp, setDataByOp] = useState<Record<number, DayRecord[]>>(() => {
     const map: Record<number, DayRecord[]> = {};
     OPERARIOS.forEach((op) => {
@@ -107,15 +107,11 @@ export function HRRevisionMensual() {
   });
   const [editingCell, setEditingCell] = useState<{ opId: number; fecha: string; field: "horas" | "estado" } | null>(null);
   const [editValue, setEditValue] = useState<string | number>("");
-  // Track selected records per operator for batch approval
-  const [selectedRecords, setSelectedRecords] = useState<Record<number, Set<string>>>({});
-  // Confirmation modal for revisado toggle
   const [confirmRevisado, setConfirmRevisado] = useState<{ opId: number; fecha: string; current: boolean } | null>(null);
 
   const mesNum = parseInt(mes);
   const mesLabel = MESES.find((m) => m.value === mes)?.label ?? "";
 
-  // Regenerate data when month changes
   const regenerateData = useCallback((month: number, year: number) => {
     const map: Record<number, DayRecord[]> = {};
     OPERARIOS.forEach((op) => {
@@ -131,6 +127,12 @@ export function HRRevisionMensual() {
       return true;
     });
   }, [estacion, search]);
+
+  // Build list of unique dates from the first operator's data
+  const allDates = useMemo(() => {
+    const firstOp = OPERARIOS[0];
+    return (dataByOp[firstOp.id] ?? []).map((r) => r.fecha);
+  }, [dataByOp]);
 
   const updateRecord = (opId: number, fecha: string, updates: Partial<DayRecord>) => {
     setDataByOp((prev) => {
@@ -172,98 +174,42 @@ export function HRRevisionMensual() {
     updateRecord(opId, fecha, { revisado: !current });
   };
 
-  const toggleRecordSelection = (opId: number, fecha: string) => {
-    setSelectedRecords((prev) => {
-      const next = { ...prev };
-      if (!next[opId]) next[opId] = new Set();
-      if (next[opId].has(fecha)) {
-        next[opId].delete(fecha);
-        if (next[opId].size === 0) delete next[opId];
-      } else {
-        next[opId].add(fecha);
-      }
-      return next;
-    });
-  };
-
-  const selectAllRecords = (opId: number) => {
-    const records = dataByOp[opId] ?? [];
-    const pendingRecords = records.filter((r) => !r.revisado && r.estado !== "descanso" && r.estado !== "feriado");
-    
-    setSelectedRecords((prev) => {
-      const next = { ...prev };
-      if (!next[opId]) next[opId] = new Set();
-      
-      // If all pending are selected, deselect all; otherwise select all pending
-      const allSelected = pendingRecords.every((r) => next[opId].has(r.fecha));
-      if (allSelected) {
-        delete next[opId];
-      } else {
-        next[opId] = new Set(pendingRecords.map((r) => r.fecha));
-      }
-      return next;
-    });
-  };
-
-  const approveSelected = (opId: number) => {
-    const selected = selectedRecords[opId];
-    if (!selected || selected.size === 0) return;
-
+  const approveAllPendingForDay = (fecha: string) => {
     setDataByOp((prev) => {
       const next = { ...prev };
-      next[opId] = (next[opId] ?? []).map((r) =>
-        selected.has(r.fecha) ? { ...r, revisado: true } : r
-      );
-      return next;
-    });
-
-    // Clear selection after approval
-    setSelectedRecords((prev) => {
-      const next = { ...prev };
-      delete next[opId];
+      filtered.forEach((op) => {
+        next[op.id] = (next[op.id] ?? []).map((r) =>
+          r.fecha === fecha && !r.revisado && r.estado !== "descanso" && r.estado !== "feriado"
+            ? { ...r, revisado: true }
+            : r
+        );
+      });
       return next;
     });
   };
 
-  const approveAllPending = (opId: number) => {
-    setDataByOp((prev) => {
-      const next = { ...prev };
-      next[opId] = (next[opId] ?? []).map((r) =>
-        !r.revisado && r.estado !== "descanso" && r.estado !== "feriado" ? { ...r, revisado: true } : r
-      );
-      return next;
-    });
-  };
-
-  const getSummary = (records: DayRecord[]) => {
-    const presentes = records.filter((r) => r.estado === "presente").length;
-    const ausJust = records.filter((r) => r.estado === "ausente_just").length;
-    const ausInjust = records.filter((r) => r.estado === "ausente_injust").length;
-    const totalHoras = records.reduce((s, r) => s + r.horasTrabajadas, 0);
-    const pendientes = records.filter((r) => !r.revisado && r.estado !== "descanso" && r.estado !== "feriado").length;
-    const diasLaborables = records.filter((r) => r.estado !== "descanso" && r.estado !== "feriado").length;
-    return { presentes, ausJust, ausInjust, totalHoras: Math.round(totalHoras * 100) / 100, pendientes, diasLaborables };
-  };
-
-  const toggleExport = (id: number) => {
+  const toggleExportDay = (fecha: string) => {
     setSelectedForExport((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(fecha)) next.delete(fecha); else next.add(fecha);
       return next;
     });
   };
 
-  const selectAll = () => {
-    if (selectedForExport.size === filtered.length) {
+  const selectAllDays = () => {
+    const laborableDates = allDates.filter((fecha) => {
+      const d = new Date(fecha + "T12:00:00");
+      return d.getDay() !== 0;
+    });
+    if (selectedForExport.size === laborableDates.length) {
       setSelectedForExport(new Set());
     } else {
-      setSelectedForExport(new Set(filtered.map((o) => o.id)));
+      setSelectedForExport(new Set(laborableDates));
     }
   };
 
-  const handleExportDAS = () => {
-    // In production: this writes to the PostgreSQL views that DAS consumes
-    alert(`Datos de ${selectedForExport.size} operario(s) del mes ${mesLabel} ${anio} guardados.\n\nLos datos quedan disponibles automáticamente en las vistas que el DAS consume.`);
+  const handleExportDAZ = () => {
+    alert(`Datos de ${selectedForExport.size} día(s) del mes ${mesLabel} ${anio} guardados.\n\nLos datos quedan disponibles automáticamente en las vistas que el DAZ consume.`);
   };
 
   const estadoBadge = (estado: DayRecord["estado"], justificacion?: string) => {
@@ -276,6 +222,21 @@ export function HRRevisionMensual() {
     }
   };
 
+  // Get day summary across all filtered operators
+  const getDaySummary = (fecha: string) => {
+    let presentes = 0, ausJust = 0, ausInjust = 0, pendientes = 0, totalHoras = 0;
+    filtered.forEach((op) => {
+      const rec = (dataByOp[op.id] ?? []).find((r) => r.fecha === fecha);
+      if (!rec) return;
+      if (rec.estado === "presente") presentes++;
+      if (rec.estado === "ausente_just") ausJust++;
+      if (rec.estado === "ausente_injust") ausInjust++;
+      if (!rec.revisado && rec.estado !== "descanso" && rec.estado !== "feriado") pendientes++;
+      totalHoras += rec.horasTrabajadas;
+    });
+    return { presentes, ausJust, ausInjust, pendientes, totalHoras: Math.round(totalHoras * 100) / 100 };
+  };
+
   return (
     <Stack gap="md">
       {/* Header */}
@@ -283,7 +244,7 @@ export function HRRevisionMensual() {
         <div>
           <Text style={{ color: C.textPrimary, fontSize: 22, fontWeight: 700 }}>Revisión Mensual</Text>
           <Text style={{ color: C.textMuted, fontSize: 13 }}>
-            Revisá las horas y asistencia por operario. Al guardar, los datos quedan disponibles para el DAS.
+            Revisá la asistencia por día. Al guardar, los datos quedan disponibles para el DAZ.
           </Text>
         </div>
         <Group gap="xs">
@@ -293,9 +254,9 @@ export function HRRevisionMensual() {
             variant="filled"
             size="sm"
             disabled={selectedForExport.size === 0}
-            onClick={handleExportDAS}
+            onClick={handleExportDAZ}
           >
-            Guardar para DAS ({selectedForExport.size})
+            Guardar para DAZ ({selectedForExport.size})
           </Button>
         </Group>
       </div>
@@ -333,9 +294,9 @@ export function HRRevisionMensual() {
           <div style={{ display: "flex", alignItems: "center", gap: 8, paddingBottom: 2 }}>
             <Checkbox
               label="Seleccionar todos"
-              checked={selectedForExport.size === filtered.length && filtered.length > 0}
-              indeterminate={selectedForExport.size > 0 && selectedForExport.size < filtered.length}
-              onChange={selectAll}
+              checked={selectedForExport.size > 0 && selectedForExport.size === allDates.filter((f) => new Date(f + "T12:00:00").getDay() !== 0).length}
+              indeterminate={selectedForExport.size > 0 && selectedForExport.size < allDates.filter((f) => new Date(f + "T12:00:00").getDay() !== 0).length}
+              onChange={selectAllDays}
               size="sm"
             />
           </div>
@@ -369,304 +330,263 @@ export function HRRevisionMensual() {
               <Text style={{ color: C.textMuted, fontSize: 11 }}>registros sin revisar</Text>
             </Card>
             <Card padding="sm" radius="md" style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}` }}>
-              <Text style={{ color: C.textMuted, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em" }}>Listos para DAS</Text>
+              <Text style={{ color: C.textMuted, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em" }}>Listos para DAZ</Text>
               <Text style={{ color: C.info.color, fontSize: 24, fontWeight: 700 }}>{selectedForExport.size}</Text>
-              <Text style={{ color: C.textMuted, fontSize: 11 }}>operarios seleccionados</Text>
+              <Text style={{ color: C.textMuted, fontSize: 11 }}>días seleccionados</Text>
             </Card>
           </div>
         );
       })()}
 
-      {/* Operarios list */}
-      {filtered.map((op) => {
-        const records = dataByOp[op.id] ?? [];
-        const summary = getSummary(records);
-        const isExpanded = expandedOp === op.id;
-        const isSelected = selectedForExport.has(op.id);
-        const selectedCount = selectedRecords[op.id]?.size ?? 0;
+      {/* Days list */}
+      {allDates.map((fecha) => {
+        const d = new Date(fecha + "T12:00:00");
+        const dowName = DOW_NAMES[d.getDay()];
+        const isDescanso = d.getDay() === 0;
+        const isExpanded = expandedDay === fecha;
+        const isSelected = selectedForExport.has(fecha);
+        const daySummary = getDaySummary(fecha);
 
         return (
-          <Card key={op.id} padding={0} radius="md" style={{ background: C.cardBg, border: `1px solid ${isSelected ? C.info.border : C.cardBorder}`, overflow: "hidden" }}>
-            {/* Row header */}
+          <Card
+            key={fecha}
+            padding={0}
+            radius="md"
+            style={{
+              background: C.cardBg,
+              border: `1px solid ${isSelected ? C.info.border : C.cardBorder}`,
+              overflow: "hidden",
+              opacity: isDescanso ? 0.5 : 1,
+            }}
+          >
+            {/* Day header */}
             <div
-              style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", cursor: "pointer", flexWrap: "wrap" }}
-              onClick={() => setExpandedOp(isExpanded ? null : op.id)}
+              style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", cursor: isDescanso ? "default" : "pointer", flexWrap: "wrap" }}
+              onClick={() => !isDescanso && setExpandedDay(isExpanded ? null : fecha)}
             >
-              <Checkbox
-                checked={isSelected}
-                onChange={(e) => { e.stopPropagation(); toggleExport(op.id); }}
-                onClick={(e) => e.stopPropagation()}
-                size="sm"
-              />
-              <div style={{ flex: 1, minWidth: 160 }}>
-                <Text style={{ color: C.textPrimary, fontSize: 14, fontWeight: 600 }}>{op.name}</Text>
-                <Text style={{ color: C.textMuted, fontSize: 12 }}>{op.legajo} · {op.categoria} · {op.estacion}</Text>
+              {!isDescanso && (
+                <Checkbox
+                  checked={isSelected}
+                  onChange={(e) => { e.stopPropagation(); toggleExportDay(fecha); }}
+                  onClick={(e) => e.stopPropagation()}
+                  size="sm"
+                />
+              )}
+              <div style={{ flex: 1, minWidth: 120 }}>
+                <Text style={{ color: C.textPrimary, fontSize: 14, fontWeight: 600 }}>
+                  {fecha.slice(5)} · {dowName}
+                </Text>
+                {isDescanso && <Text style={{ color: C.textMuted, fontSize: 11 }}>Descanso</Text>}
               </div>
 
-              <Group gap="lg" style={{ flexWrap: "wrap" }}>
-                <div style={{ textAlign: "center", minWidth: 50 }}>
-                  <Text style={{ color: C.success.color, fontSize: 16, fontWeight: 700 }}>{summary.presentes}</Text>
-                  <Text style={{ color: C.textMuted, fontSize: 10 }}>Presentes</Text>
-                </div>
-                <div style={{ textAlign: "center", minWidth: 50 }}>
-                  <Text style={{ color: C.warning.color, fontSize: 16, fontWeight: 700 }}>{summary.ausJust}</Text>
-                  <Text style={{ color: C.textMuted, fontSize: 10 }}>Just.</Text>
-                </div>
-                <div style={{ textAlign: "center", minWidth: 50 }}>
-                  <Text style={{ color: C.danger.color, fontSize: 16, fontWeight: 700 }}>{summary.ausInjust}</Text>
-                  <Text style={{ color: C.textMuted, fontSize: 10 }}>Injust.</Text>
-                </div>
-                {summary.pendientes > 0 && (
-                  <Tooltip label={`${summary.pendientes} registros pendientes de revisión`}>
+              {!isDescanso && (
+                <Group gap="lg" style={{ flexWrap: "wrap" }}>
+                  <div style={{ textAlign: "center", minWidth: 50 }}>
+                    <Text style={{ color: C.success.color, fontSize: 14, fontWeight: 700 }}>{daySummary.presentes}</Text>
+                    <Text style={{ color: C.textMuted, fontSize: 10 }}>Presentes</Text>
+                  </div>
+                  <div style={{ textAlign: "center", minWidth: 50 }}>
+                    <Text style={{ color: C.warning.color, fontSize: 14, fontWeight: 700 }}>{daySummary.ausJust}</Text>
+                    <Text style={{ color: C.textMuted, fontSize: 10 }}>Just.</Text>
+                  </div>
+                  <div style={{ textAlign: "center", minWidth: 50 }}>
+                    <Text style={{ color: C.danger.color, fontSize: 14, fontWeight: 700 }}>{daySummary.ausInjust}</Text>
+                    <Text style={{ color: C.textMuted, fontSize: 10 }}>Injust.</Text>
+                  </div>
+                  {daySummary.pendientes > 0 && (
                     <Badge color="yellow" variant="light" size="sm" leftSection={<AlertTriangle size={10} />}>
-                      {summary.pendientes} pend.
+                      {daySummary.pendientes} pend.
                     </Badge>
-                  </Tooltip>
-                )}
-              </Group>
+                  )}
+                </Group>
+              )}
 
-              <ActionIcon variant="subtle" color="gray" size="sm">
-                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </ActionIcon>
+              {!isDescanso && (
+                <ActionIcon variant="subtle" color="gray" size="sm">
+                  {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </ActionIcon>
+              )}
             </div>
 
-            {/* Expanded detail */}
-            <Collapse in={isExpanded}>
-              <div style={{ borderTop: `1px solid ${C.divider}`, overflowX: "auto" }}>
-                <Table striped highlightOnHover style={{ fontSize: 12 }}>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th style={{ color: C.textMuted, width: 40 }}>
-                        {summary.pendientes > 0 && (
-                          <Checkbox
-                            size="xs"
-                            checked={
-                              selectedRecords[op.id]?.size === summary.pendientes &&
-                              summary.pendientes > 0
-                            }
-                            indeterminate={
-                              selectedRecords[op.id] &&
-                              selectedRecords[op.id].size > 0 &&
-                              selectedRecords[op.id].size < summary.pendientes
-                            }
-                            onChange={(e) => { e.stopPropagation(); selectAllRecords(op.id); }}
-                          />
-                        )}
-                      </Table.Th>
-                      <Table.Th style={{ color: C.textMuted, minWidth: 90 }}>Fecha</Table.Th>
-                      <Table.Th style={{ color: C.textMuted }}>Día</Table.Th>
-                      <Table.Th style={{ color: C.textMuted }}>Ingreso</Table.Th>
-                      <Table.Th style={{ color: C.textMuted }}>Egreso</Table.Th>
-                      <Table.Th style={{ color: C.textMuted, minWidth: 90 }}>Horas</Table.Th>
-                      <Table.Th style={{ color: C.textMuted, minWidth: 130 }}>Estado</Table.Th>
-                      <Table.Th style={{ color: C.textMuted }}>Obs.</Table.Th>
-                      <Table.Th style={{ color: C.textMuted, minWidth: 80 }}>Revisado</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {records.map((rec) => {
-                      const d = new Date(rec.fecha + "T12:00:00");
-                      const dowName = DOW_NAMES[d.getDay()];
-                      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-                      const isEditingHoras = editingCell?.opId === op.id && editingCell?.fecha === rec.fecha && editingCell?.field === "horas";
-                      const isEditingEstado = editingCell?.opId === op.id && editingCell?.fecha === rec.fecha && editingCell?.field === "estado";
-                      const isNonEditable = rec.estado === "descanso" || rec.estado === "feriado";
-                      const isPending = !rec.revisado && !isNonEditable;
-                      const isRecordSelected = selectedRecords[op.id]?.has(rec.fecha) ?? false;
+            {/* Expanded: all operators for this day */}
+            {!isDescanso && (
+              <Collapse in={isExpanded}>
+                <div style={{ borderTop: `1px solid ${C.divider}`, overflowX: "auto" }}>
+                  <Table striped highlightOnHover style={{ fontSize: 12 }}>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th style={{ color: C.textMuted, minWidth: 150 }}>Operario</Table.Th>
+                        <Table.Th style={{ color: C.textMuted }}>Ingreso</Table.Th>
+                        <Table.Th style={{ color: C.textMuted }}>Egreso</Table.Th>
+                        <Table.Th style={{ color: C.textMuted, minWidth: 80 }}>Horas</Table.Th>
+                        <Table.Th style={{ color: C.textMuted, minWidth: 130 }}>Estado</Table.Th>
+                        <Table.Th style={{ color: C.textMuted }}>Obs.</Table.Th>
+                        <Table.Th style={{ color: C.textMuted, minWidth: 80 }}>Revisado</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {filtered.map((op) => {
+                        const rec = (dataByOp[op.id] ?? []).find((r) => r.fecha === fecha);
+                        if (!rec) return null;
+                        const isNonEditable = rec.estado === "descanso" || rec.estado === "feriado";
+                        const isEditingHoras = editingCell?.opId === op.id && editingCell?.fecha === fecha && editingCell?.field === "horas";
+                        const isEditingEstado = editingCell?.opId === op.id && editingCell?.fecha === fecha && editingCell?.field === "estado";
 
-                      return (
-                        <Table.Tr
-                          key={rec.fecha}
-                          style={{ 
-                            opacity: rec.estado === "descanso" ? 0.5 : 1, 
-                            background: !rec.revisado && rec.estado !== "descanso" ? C.warning.bg : undefined 
-                          }}
-                        >
-                          <Table.Td>
-                            {isPending && (
-                              <Checkbox
-                                size="xs"
-                                checked={isRecordSelected}
-                                onChange={(e) => { e.stopPropagation(); toggleRecordSelection(op.id, rec.fecha); }}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            )}
-                          </Table.Td>
-                          <Table.Td style={{ color: C.textPrimary }}>{rec.fecha.slice(5)}</Table.Td>
-                          <Table.Td style={{ color: isWeekend ? C.textMuted : C.textSecondary }}>{dowName}</Table.Td>
-                          <Table.Td>
-                            <span style={{ color: rec.observacionIngreso ? C.warning.color : C.textPrimary }}>
-                              {rec.ingreso ?? "—"}
-                            </span>
-                          </Table.Td>
-                          <Table.Td>
-                            <span style={{ color: rec.observacionEgreso ? C.warning.color : C.textPrimary }}>
-                              {rec.egreso ?? "—"}
-                            </span>
-                          </Table.Td>
+                        return (
+                          <Table.Tr
+                            key={op.id}
+                            style={{
+                              background: !rec.revisado && !isNonEditable ? C.warning.bg : undefined,
+                            }}
+                          >
+                            <Table.Td>
+                              <Text style={{ color: C.textPrimary, fontSize: 12, fontWeight: 600 }}>{op.name}</Text>
+                              <Text style={{ color: C.textMuted, fontSize: 10 }}>{op.legajo} · {op.estacion}</Text>
+                            </Table.Td>
+                            <Table.Td>
+                              <span style={{ color: rec.observacionIngreso ? C.warning.color : C.textPrimary }}>
+                                {rec.ingreso ?? "—"}
+                              </span>
+                            </Table.Td>
+                            <Table.Td>
+                              <span style={{ color: rec.observacionEgreso ? C.warning.color : C.textPrimary }}>
+                                {rec.egreso ?? "—"}
+                              </span>
+                            </Table.Td>
 
-                          {/* Editable Horas */}
-                          <Table.Td>
-                            {isEditingHoras ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                                <NumberInput
-                                  value={editValue as number}
-                                  onChange={(v) => setEditValue(v as number)}
-                                  size="xs"
-                                  min={0}
-                                  max={24}
-                                  step={0.25}
-                                  decimalScale={2}
-                                  style={{ width: 60 }}
-                                  onKeyDown={(e) => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") cancelEdit(); }}
-                                  autoFocus
-                                />
-                                <ActionIcon size="xs" color="green" variant="subtle" onClick={commitEdit}><Check size={11} /></ActionIcon>
-                                <ActionIcon size="xs" color="gray" variant="subtle" onClick={cancelEdit}><X size={11} /></ActionIcon>
-                              </div>
-                            ) : (
-                              <Tooltip label="Al aprobar, se computa como jornada completa (8h)" disabled={isNonEditable || rec.horasTrabajadas === 0}>
+                            {/* Editable Horas */}
+                            <Table.Td>
+                              {isEditingHoras ? (
+                                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                  <NumberInput
+                                    value={editValue as number}
+                                    onChange={(v) => setEditValue(v as number)}
+                                    size="xs"
+                                    min={0}
+                                    max={24}
+                                    step={0.25}
+                                    decimalScale={2}
+                                    style={{ width: 60 }}
+                                    onKeyDown={(e) => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") cancelEdit(); }}
+                                    autoFocus
+                                  />
+                                  <ActionIcon size="xs" color="green" variant="subtle" onClick={commitEdit}><Check size={11} /></ActionIcon>
+                                  <ActionIcon size="xs" color="gray" variant="subtle" onClick={cancelEdit}><X size={11} /></ActionIcon>
+                                </div>
+                              ) : (
+                                <Tooltip label="Al aprobar, se computa como jornada completa (8h)" disabled={isNonEditable || rec.horasTrabajadas === 0}>
+                                  <div
+                                    style={{ display: "flex", alignItems: "center", gap: 4, cursor: isNonEditable ? "default" : "pointer" }}
+                                    onClick={() => !isNonEditable && startEdit(op.id, fecha, "horas", rec.horasTrabajadas)}
+                                  >
+                                    <span style={{ color: C.textPrimary, fontWeight: 600 }}>
+                                      {rec.horasTrabajadas > 0 ? `${rec.horasTrabajadas}/8` : "—"}
+                                    </span>
+                                    {!isNonEditable && <Pencil size={10} color={C.textMuted} />}
+                                  </div>
+                                </Tooltip>
+                              )}
+                            </Table.Td>
+
+                            {/* Editable Estado */}
+                            <Table.Td>
+                              {isEditingEstado ? (
+                                <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                  <NativeSelect
+                                    value={editValue as string}
+                                    onChange={(e) => setEditValue(e.currentTarget.value)}
+                                    size="xs"
+                                    data={[
+                                      { value: "presente", label: "Presente" },
+                                      { value: "ausente_just", label: "Aus. Justif." },
+                                      { value: "ausente_injust", label: "Aus. Injustif." },
+                                    ]}
+                                    style={{ width: 110 }}
+                                  />
+                                  <ActionIcon size="xs" color="green" variant="subtle" onClick={commitEdit}><Check size={11} /></ActionIcon>
+                                  <ActionIcon size="xs" color="gray" variant="subtle" onClick={cancelEdit}><X size={11} /></ActionIcon>
+                                </div>
+                              ) : (
                                 <div
                                   style={{ display: "flex", alignItems: "center", gap: 4, cursor: isNonEditable ? "default" : "pointer" }}
-                                  onClick={() => !isNonEditable && startEdit(op.id, rec.fecha, "horas", rec.horasTrabajadas)}
+                                  onClick={() => !isNonEditable && startEdit(op.id, fecha, "estado", rec.estado)}
                                 >
-                                  <span style={{ color: C.textPrimary, fontWeight: 600 }}>
-                                    {rec.horasTrabajadas > 0 ? `${rec.horasTrabajadas}/8` : "—"}
-                                  </span>
+                                  {estadoBadge(rec.estado, rec.justificacion)}
                                   {!isNonEditable && <Pencil size={10} color={C.textMuted} />}
                                 </div>
-                              </Tooltip>
-                            )}
-                          </Table.Td>
+                              )}
+                            </Table.Td>
 
-                          {/* Editable Estado */}
-                          <Table.Td>
-                            {isEditingEstado ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                                <NativeSelect
-                                  value={editValue as string}
-                                  onChange={(e) => setEditValue(e.currentTarget.value)}
-                                  size="xs"
-                                  data={[
-                                    { value: "presente", label: "Presente" },
-                                    { value: "ausente_just", label: "Aus. Justif." },
-                                    { value: "ausente_injust", label: "Aus. Injustif." },
-                                  ]}
-                                  style={{ width: 110 }}
-                                />
-                                <ActionIcon size="xs" color="green" variant="subtle" onClick={commitEdit}><Check size={11} /></ActionIcon>
-                                <ActionIcon size="xs" color="gray" variant="subtle" onClick={cancelEdit}><X size={11} /></ActionIcon>
-                              </div>
-                            ) : (
-                              <div
-                                style={{ display: "flex", alignItems: "center", gap: 4, cursor: isNonEditable ? "default" : "pointer" }}
-                                onClick={() => !isNonEditable && startEdit(op.id, rec.fecha, "estado", rec.estado)}
-                              >
-                                {estadoBadge(rec.estado, rec.justificacion)}
-                                {!isNonEditable && <Pencil size={10} color={C.textMuted} />}
-                              </div>
-                            )}
-                          </Table.Td>
+                            <Table.Td>
+                              {(rec.observacionIngreso || rec.observacionEgreso) && (
+                                <Tooltip label={rec.observacionIngreso || rec.observacionEgreso} multiline w={250}>
+                                  <ActionIcon variant="subtle" color="yellow" size="xs">
+                                    <Eye size={12} />
+                                  </ActionIcon>
+                                </Tooltip>
+                              )}
+                            </Table.Td>
 
-                          <Table.Td>
-                            {(rec.observacionIngreso || rec.observacionEgreso) && (
-                              <Tooltip label={rec.observacionIngreso || rec.observacionEgreso} multiline w={250}>
-                                <ActionIcon variant="subtle" color="yellow" size="xs">
-                                  <Eye size={12} />
-                                </ActionIcon>
-                              </Tooltip>
-                            )}
-                          </Table.Td>
+                            {/* Revisado */}
+                            <Table.Td>
+                              {!isNonEditable && (
+                                <Tooltip label={rec.revisado ? "Marcar como pendiente" : "Aprobar registro"}>
+                                  <ActionIcon
+                                    variant="subtle"
+                                    color={rec.revisado ? "green" : "yellow"}
+                                    size="sm"
+                                    onClick={() => setConfirmRevisado({ opId: op.id, fecha, current: rec.revisado })}
+                                  >
+                                    {rec.revisado
+                                      ? <CheckCircle size={16} color={C.success.color} />
+                                      : <Clock size={16} color={C.warning.color} />
+                                    }
+                                  </ActionIcon>
+                                </Tooltip>
+                              )}
+                            </Table.Td>
+                          </Table.Tr>
+                        );
+                      })}
+                    </Table.Tbody>
+                  </Table>
+                </div>
 
-                          {/* Clickable Revisado */}
-                          <Table.Td>
-                            {!isNonEditable && (
-                              <Tooltip label={rec.revisado ? "Marcar como pendiente" : "Aprobar registro"}>
-                                <ActionIcon
-                                  variant="subtle"
-                                  color={rec.revisado ? "green" : "yellow"}
-                                  size="sm"
-                                  onClick={() => setConfirmRevisado({ opId: op.id, fecha: rec.fecha, current: rec.revisado })}
-                                >
-                                  {rec.revisado
-                                    ? <CheckCircle size={16} color={C.success.color} />
-                                    : <Clock size={16} color={C.warning.color} />
-                                  }
-                                </ActionIcon>
-                              </Tooltip>
-                            )}
-                          </Table.Td>
-                        </Table.Tr>
-                      );
-                    })}
-                  </Table.Tbody>
-                </Table>
-              </div>
-
-              {/* Footer with summary */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderTop: `1px solid ${C.divider}`, flexWrap: "wrap", gap: 8 }}>
-                <Group gap="md">
+                {/* Footer */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderTop: `1px solid ${C.divider}`, flexWrap: "wrap", gap: 8 }}>
                   <Text style={{ color: C.textMuted, fontSize: 12 }}>
-                    <strong style={{ color: C.textPrimary }}>{summary.totalHoras}/{summary.presentes * 8}h</strong> trabajadas ·{" "}
-                    <strong style={{ color: C.success.color }}>{summary.presentes}</strong>/{summary.diasLaborables} días
+                    <strong style={{ color: C.success.color }}>{daySummary.presentes}</strong>/{filtered.length} presentes · <strong style={{ color: C.textPrimary }}>{daySummary.totalHoras}/{daySummary.presentes * 8}h</strong>
                   </Text>
-                </Group>
-                <Group gap="xs">
-                  {selectedCount > 0 ? (
-                    <Button
-                      size="xs"
-                      variant="filled"
-                      color="green"
-                      leftSection={<CheckCircle size={12} />}
-                      onClick={(e) => { e.stopPropagation(); approveSelected(op.id); }}
-                    >
-                      Aprobar seleccionados ({selectedCount})
-                    </Button>
-                  ) : (
-                    summary.pendientes > 0 && (
+                  <Group gap="xs">
+                    {daySummary.pendientes > 0 && (
                       <Button
                         size="xs"
                         variant="light"
                         color="green"
                         leftSection={<CheckCircle size={12} />}
-                        onClick={(e) => { e.stopPropagation(); approveAllPending(op.id); }}
+                        onClick={(e) => { e.stopPropagation(); approveAllPendingForDay(fecha); }}
                       >
-                        Aprobar todos ({summary.pendientes})
+                        Aprobar todos ({daySummary.pendientes})
                       </Button>
-                    )
-                  )}
-                  <Button
-                    size="xs"
-                    variant="light"
-                    color="blue"
-                    leftSection={<FileText size={12} />}
-                    onClick={(e) => { e.stopPropagation(); }}
-                  >
-                    Ver legajo
-                  </Button>
-                  {!isSelected && (
-                    <Button
-                      size="xs"
-                      variant="filled"
-                      color="blue"
-                      leftSection={<CheckCircle size={12} />}
-                      onClick={(e) => { e.stopPropagation(); toggleExport(op.id); }}
-                    >
-                      Marcar para DAS
-                    </Button>
-                  )}
-                </Group>
-              </div>
-            </Collapse>
+                    )}
+                    {!isSelected && (
+                      <Button
+                        size="xs"
+                        variant="filled"
+                        color="blue"
+                        leftSection={<CheckCircle size={12} />}
+                        onClick={(e) => { e.stopPropagation(); toggleExportDay(fecha); }}
+                      >
+                        Marcar para DAZ
+                      </Button>
+                    )}
+                  </Group>
+                </div>
+              </Collapse>
+            )}
           </Card>
         );
       })}
-
-      {filtered.length === 0 && (
-        <Card padding="xl" radius="md" style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, textAlign: "center" }}>
-          <Text style={{ color: C.textMuted }}>No se encontraron operarios con los filtros seleccionados.</Text>
-        </Card>
-      )}
 
       {/* Confirmation modal for revisado toggle */}
       <Modal

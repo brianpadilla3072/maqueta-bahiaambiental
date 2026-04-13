@@ -21,13 +21,13 @@ import {
 } from "lucide-react";
 import { useAppColors } from "../../hooks/useAppColors";
 
-type DASStatus = "activo" | "baja" | "pendiente" | null;
-interface DASEmployee {
+type DAZStatus = "activo" | "baja" | "pendiente" | null;
+interface DAZEmployee {
   legajo: string; name: string; dni: string;
-  categoria: string; funcion: string; estacion: string; status: DASStatus;
+  categoria: string; funcion: string; estacion: string; status: DAZStatus;
 }
 
-const MOCK_EMPLOYEES: Record<string, DASEmployee> = {
+const MOCK_EMPLOYEES: Record<string, DAZEmployee> = {
   "OP-5501": { legajo: "OP-5501", name: "Tomás Acosta",    dni: "35.442.781", categoria: "Peón",    funcion: "Barrendero", estacion: "Flores",        status: "activo" },
   "OP-5502": { legajo: "OP-5502", name: "Patricia Ruiz",   dni: "29.118.443", categoria: "Chofer",  funcion: "Conductor",  estacion: "Centro Norte",  status: "activo" },
   "OP-5503": { legajo: "OP-5503", name: "Héctor Juárez",   dni: "22.887.001", categoria: "Oficial", funcion: "Encargado",  estacion: "Caballito",     status: "baja"   },
@@ -37,7 +37,7 @@ export function AdminEnrolamiento() {
   const C = useAppColors();
   const [activeStep,   setActiveStep]   = useState(0);
   const [legajo,       setLegajo]       = useState("");
-  const [dasResult,    setDasResult]    = useState<DASEmployee | null>(null);
+  const [dasResult,    setDasResult]    = useState<DAZEmployee | null>(null);
   const [dasLoading,   setDasLoading]   = useState(false);
   const [faceStatus,   setFaceStatus]   = useState<"idle" | "scanning" | "captured">("idle");
   const [profileForm,  setProfileForm]  = useState({ nombre: "", categoria: "", funcion: "", estacion: "" });
@@ -48,7 +48,7 @@ export function AdminEnrolamiento() {
     input: { background: C.inputBg, borderColor: C.inputBorder, color: C.inputColor },
   };
 
-  const handleDASQuery = () => {
+  const handleDAZQuery = () => {
     if (!legajo.trim()) { notifications.show({ title: "Campo requerido", message: "Ingrese un Legajo o DNI.", color: "orange" }); return; }
     setDasLoading(true);
     setTimeout(() => {
@@ -59,7 +59,7 @@ export function AdminEnrolamiento() {
         if (found.status === "activo") setProfileForm({ nombre: found.name, categoria: found.categoria, funcion: found.funcion, estacion: found.estacion });
       } else {
         setDasResult(null);
-        notifications.show({ title: "No encontrado", message: "El legajo no existe en el sistema DAS.", color: "orange" });
+        notifications.show({ title: "No encontrado", message: "El legajo no existe en el sistema DAZ.", color: "orange" });
       }
     }, 1200);
   };
@@ -137,19 +137,19 @@ export function AdminEnrolamiento() {
       <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
         <div>
           <Text style={{ fontSize: 22, fontWeight: 700, color: C.textPrimary, marginBottom: 4 }}>Enrolamiento Facial</Text>
-          <Text style={{ fontSize: 13, color: C.textMuted }}>Alta de operarios al sistema biométrico · Verificación DAS → Captura → Perfil</Text>
+          <Text style={{ fontSize: 13, color: C.textMuted }}>Alta de operarios al sistema biométrico · Verificación DAZ → Captura → Perfil</Text>
         </div>
 
         <Stepper active={activeStep} allowNextStepsSelect={false} color="blue" size="sm">
           {/* STEP 1 */}
-          <Stepper.Step key="step-das" label="Verificación DAS" description="Consulta al padrón" icon={<Search size={16} />}>
+          <Stepper.Step key="step-das" label="Verificación DAZ" description="Consulta al padrón" icon={<Search size={16} />}>
             <Card withBorder radius="lg" shadow="sm" p={0} mt="lg" style={{ borderColor: C.cardBorder, background: C.cardBg }}>
               <div style={{ padding: "14px 20px", borderBottom: `1px solid ${C.divider}`, background: C.cardHeaderBg, display: "flex", alignItems: "center", gap: 10 }}>
                 <ThemeIcon size="md" radius="md" style={{ background: C.info.bg, color: C.info.color, border: `1px solid ${C.info.border}` }}>
                   <Search size={15} />
                 </ThemeIcon>
                 <div>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: C.textPrimary, margin: 0 }}>Consulta al Sistema DAS</p>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: C.textPrimary, margin: 0 }}>Consulta al Sistema DAZ</p>
                   <p style={{ fontSize: 12, color: C.textMuted, margin: 0 }}>Verificación de estado de empleado</p>
                 </div>
               </div>
@@ -158,11 +158,11 @@ export function AdminEnrolamiento() {
                   <TextInput
                     label="Legajo o DNI del operario" placeholder="Ej: OP-5501"
                     value={legajo} onChange={(e) => setLegajo(e.currentTarget.value)}
-                    style={{ flex: 1 }} onKeyDown={(e) => e.key === "Enter" && handleDASQuery()}
+                    style={{ flex: 1 }} onKeyDown={(e) => e.key === "Enter" && handleDAZQuery()}
                     styles={inputStyles}
                   />
-                  <Button leftSection={<Search size={15} />} loading={dasLoading} onClick={handleDASQuery} color="blue" style={{ fontWeight: 600 }}>
-                    Consultar DAS
+                  <Button leftSection={<Search size={15} />} loading={dasLoading} onClick={handleDAZQuery} color="blue" style={{ fontWeight: 600 }}>
+                    Consultar DAZ
                   </Button>
                 </div>
                 <Text style={{ fontSize: 12, color: C.textSubtle }}>Demo: OP-5501 (activo) · OP-5502 (activo) · OP-5503 (baja)</Text>
@@ -171,7 +171,7 @@ export function AdminEnrolamiento() {
                     <Alert color="orange" variant="light" icon={<MinusCircle size={18} />} title="ALERTA: Empleado en estado BAJA" radius="md"
                       styles={{ root: { border: `1px solid ${C.danger.border}` }, title: { color: C.danger.text }, message: { color: C.danger.text } }}
                     >
-                      <strong>{dasResult.name}</strong> ({dasResult.legajo}) figura con baja en el sistema DAS.
+                      <strong>{dasResult.name}</strong> ({dasResult.legajo}) figura con baja en el sistema DAZ.
                     </Alert>
                   ) : (
                     <div style={{ border: `1px solid ${C.info.border}`, borderLeft: `4px solid ${C.info.color}`, borderRadius: 10, padding: "16px 20px", background: C.info.bg }}>
@@ -183,7 +183,7 @@ export function AdminEnrolamiento() {
                           <div>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                               <span style={{ fontSize: 16, fontWeight: 700, color: C.textPrimary }}>{dasResult.name}</span>
-                              <Badge color="blue" size="sm" variant="light" style={{ fontWeight: 600 }}>Activo en DAS</Badge>
+                              <Badge color="blue" size="sm" variant="light" style={{ fontWeight: 600 }}>Activo en DAZ</Badge>
                             </div>
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "4px 16px" }}>
                               {[
@@ -292,7 +292,7 @@ export function AdminEnrolamiento() {
                   </p>
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
-                  {["Datos DAS verificados", "Rostro capturado", "Perfil guardado"].map((item) => (
+                  {["Datos DAZ verificados", "Rostro capturado", "Perfil guardado"].map((item) => (
                     <Badge key={item} color="blue" size="md" variant="light" radius="sm" leftSection={<CheckCircle size={12} />} style={{ fontWeight: 600 }}>
                       {item}
                     </Badge>

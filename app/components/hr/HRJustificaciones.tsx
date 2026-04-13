@@ -68,7 +68,7 @@ export function HRJustificaciones() {
     setTimeout(() => {
       setSaving(false);
       setSaved(true);
-      notifications.show({ title: "Justificación registrada", message: "Sincronizado con el sistema DAS.", color: "teal", icon: <CheckCircle size={16} /> });
+      notifications.show({ title: "Justificación registrada", message: "Sincronizado con el sistema DAZ.", color: "teal", icon: <CheckCircle size={16} /> });
       setTimeout(() => setSaved(false), 3000);
     }, 1000);
   };
@@ -92,7 +92,7 @@ export function HRJustificaciones() {
         <Box>
           <Text style={{ fontSize: 22, fontWeight: 700, color: C.textPrimary, marginBottom: 4 }}>Carga de Justificaciones</Text>
           <Text style={{ fontSize: 13, color: C.textMuted }}>
-            Asigne justificaciones de ausencia. Los datos se sincronizan automáticamente con el sistema DAS.
+            Asigne justificaciones de ausencia. Los datos se sincronizan automáticamente con el sistema DAZ.
           </Text>
         </Box>
 
@@ -153,7 +153,7 @@ export function HRJustificaciones() {
 
               {saved && (
                 <Alert color="teal" variant="light" icon={<CheckCircle size={15} />} title="Guardado correctamente" radius="md">
-                  La justificación fue registrada y está disponible en el sistema DAS.
+                  La justificación fue registrada y está disponible en el sistema DAZ.
                 </Alert>
               )}
 
